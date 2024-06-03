@@ -37,6 +37,7 @@ class Movie(db.Model):
 with app.app_context():
     db.create_all()
 
+# # create a new entry
 # new_movie = Movie(
 #     title="Avatar The Way of Water",
 #     year=2022,
@@ -50,11 +51,39 @@ with app.app_context():
 #     db.session.add(new_movie)
 #     db.session.commit()
 
+class UpdateForm(FlaskForm):
+    rating = StringField(label='Your rating out of 10 e.g. 7.5', validators=[])
+    review = StringField(label='Your review', validators=[])
+    submit = SubmitField('Submit')
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    # get list of all movies
+    with app.app_context():
+        movie_list = db.session.execute(db.select(Movie).order_by(Movie.rating)).scalars()
+        # for movie in movie_list:
+        #     print(movie.title)
+        return render_template("index.html", movie_list=movie_list)
 
+@app.route("/edit", methods=["GET", "POST"])
+def update_movie():
+    form = UpdateForm()
+    movie_id = request.args.get("id")
+    movie = db.get_or_404(Movie, movie_id)
+    if form.validate_on_submit():
+        movie.rating = float(form.rating.data)
+        movie.review = form.review.data
+        db.session.commit()
+        return redirect(url_for("home"))
+    return render_template("edit.html", movie=movie, form=form)
+
+@app.route("/delete")
+def delete_movie():
+    movie_id = request.args.get("id")
+    movie = db.get_or_404(Movie, movie_id)
+    db.session.delete(movie)
+    db.session.commit()
+    return redirect(url_for("home"))
 
 if __name__ == '__main__':
     app.run(debug=True)
